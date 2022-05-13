@@ -9,16 +9,20 @@ public class PlayerController : MonoBehaviour
     Animator anim;
     SpriteRenderer sprite;
 
+    public ParticleSystem groundParticles;
+    public ParticleSystem wallParticles;
+
     public float speed = 3;
     public float airSpeed = 5;
     public float jumpForce = 0.1f;
     public float maxVelocity = 10;
 
-    private bool isGrounded = false;
-    private bool isOnWallAir = false;
+    public bool isGrounded = false;
+    public bool isOnWallAir = false;
+    public bool isJumping = false;
 
-    private bool isOnRightWall = false;
-    private bool isHeadingRight = true;
+    public bool isOnRightWall = true;
+    public bool isHeadingRight = true;
 
     private Vector2 rightJumpDir;
     private Vector2 leftJumpDir;
@@ -41,8 +45,9 @@ public class PlayerController : MonoBehaviour
 
     private void Update()
     {
-        if (Input.GetKeyDown(KeyCode.Space) && isGrounded || Input.GetKeyDown(KeyCode.Space) && isOnWallAir)
+        if (Input.GetKeyDown(KeyCode.Space) && isGrounded || Input.GetKeyDown(KeyCode.Space) && isOnWallAir && !isGrounded)
             inputSpace = true;
+        HorizontalMovement = Input.GetAxis("Horizontal");
     }
 
     // Update is called once per frame
@@ -51,13 +56,15 @@ public class PlayerController : MonoBehaviour
         HorizontalMovement = Input.GetAxis("Horizontal");
         if (HorizontalMovement > float.Epsilon)
         {
-            sprite.flipX = true;
+            if(!isOnWallAir)
+                sprite.flipX = true;
             isHeadingRight = true;
             anim.SetFloat("speed", 2);
         }
         else if (HorizontalMovement < -float.Epsilon)
         {
-            sprite.flipX = false;
+            if(!isOnWallAir)
+                sprite.flipX = false;
             isHeadingRight = false;
             anim.SetFloat("speed", 2);
         }
@@ -90,6 +97,9 @@ public class PlayerController : MonoBehaviour
 
     private void Jump()
     {
+        groundParticles.Play();
+        isJumping = true;
+        Debug.Log("Jump");
         rb.velocity = Vector2.zero;
         sprite.flipX = isHeadingRight;
         if (isHeadingRight)
@@ -104,6 +114,8 @@ public class PlayerController : MonoBehaviour
 
     private void WallJump()
     {
+        isJumping = true;
+        Debug.Log("WallJump");
         rb.velocity = Vector2.zero;
         Debug.Log(isOnRightWall);
         sprite.flipX = !isOnRightWall;
@@ -112,48 +124,71 @@ public class PlayerController : MonoBehaviour
         if (isOnRightWall)
         {
             rb.AddForce(3f * jumpForce * leftJumpDir, ForceMode2D.Impulse);
+            wallParticles.transform.localPosition = new Vector3(2.23f, 0, 0);
         }
         else
         {
             rb.AddForce(3f * jumpForce * rightJumpDir, ForceMode2D.Impulse);
+            wallParticles.transform.localPosition = Vector3.zero;
         }
+
+        wallParticles.Play();
+
     }
 
     private void OnCollisionEnter2D(Collision2D collision)
     {
+        isJumping = false;
         rb.velocity = Vector2.zero;
         Debug.Log(collision.GetContact(0).normal);
         Vector2 c = collision.GetContact(0).normal;
         if(Mathf.Abs(c.y) > Mathf.Abs(c.x))
         {
-            Debug.Log("touching floor");
-            isGrounded = true;
-            if (isOnWallAir)
+            if (c.y > 0)
             {
-                isOnWallAir = false;
-                anim.SetTrigger("wallJumping");
+                isGrounded = true;
+                if (isOnWallAir)
+                {
+                    anim.SetTrigger("wallJumping");
+                }
             }
         }
         else
         {
-            Debug.Log("touching wall");
+            isOnWallAir = true;
             if (!isGrounded)
             {
-                Debug.Log("Clawing wall");
                 isOnRightWall = c.x < 0;
                 sprite.flipX = isOnRightWall;
                 anim.SetTrigger("wallJumping");
-                isOnWallAir = true;
             }
         }
     }
 
     private void OnCollisionExit2D(Collision2D collision)
     {
-        if (!isOnWallAir)
-            isGrounded = false;
-        else
+        //Slide down a wall that doesn't end on the floor or jump from a wall
+        if (isOnWallAir && !isGrounded && !isJumping)
+        {
             anim.SetTrigger("wallJumping");
-        isOnWallAir = false;
+            isOnWallAir = false;
+        }
+
+        //Jump from the corner
+        if(isOnWallAir && !isGrounded && isJumping)
+        {
+            anim.SetTrigger("wallJumping");
+            isJumping = false;
+        }
+
+        //The character moves out from a corner
+        if(isOnWallAir && isGrounded)
+        {
+            isOnWallAir = false;
+        }
+        else
+        {
+            isGrounded = false;
+        }
     }
 }
