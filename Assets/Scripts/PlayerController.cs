@@ -6,6 +6,8 @@ public class PlayerController : MonoBehaviour
 {
 
     Rigidbody2D rb;
+    Animator anim;
+    SpriteRenderer sprite;
 
     public float speed = 3;
     public float airSpeed = 5;
@@ -21,7 +23,7 @@ public class PlayerController : MonoBehaviour
     private Vector2 rightJumpDir;
     private Vector2 leftJumpDir;
 
-    private bool inputSpace = false;
+    public bool inputSpace = false;
 
     private float HorizontalMovement;
 
@@ -30,6 +32,8 @@ public class PlayerController : MonoBehaviour
     void Start()
     {
         rb = GetComponent<Rigidbody2D>();
+        anim = GetComponent<Animator>();
+        sprite = GetComponent<SpriteRenderer>();
 
         rightJumpDir = new Vector2(1, 1.3f).normalized;
         leftJumpDir = new Vector2(-1, 1.3f).normalized;
@@ -45,10 +49,20 @@ public class PlayerController : MonoBehaviour
     void FixedUpdate()
     {
         HorizontalMovement = Input.GetAxis("Horizontal");
-        if (HorizontalMovement > 0)
+        if (HorizontalMovement > float.Epsilon)
+        {
+            sprite.flipX = true;
             isHeadingRight = true;
-        else if (HorizontalMovement < 0)
+            anim.SetFloat("speed", 2);
+        }
+        else if (HorizontalMovement < -float.Epsilon)
+        {
+            sprite.flipX = false;
             isHeadingRight = false;
+            anim.SetFloat("speed", 2);
+        }
+        else
+            anim.SetFloat("speed", 0);
         if (isGrounded)
         {
             rb.MovePosition((Vector2)transform.position + HorizontalMovement * speed * Time.fixedDeltaTime * Vector2.right);
@@ -66,10 +80,10 @@ public class PlayerController : MonoBehaviour
             isGrounded = false;
             Jump();
         }
-
-        if(inputSpace && isOnWallAir)
+        else if(inputSpace && isOnWallAir)
         {
             inputSpace = false;
+            isOnWallAir = false;
             WallJump();
         }
     }
@@ -77,23 +91,31 @@ public class PlayerController : MonoBehaviour
     private void Jump()
     {
         rb.velocity = Vector2.zero;
-        if(isHeadingRight)
+        sprite.flipX = isHeadingRight;
+        if (isHeadingRight)
+        {
             rb.AddForce(rightJumpDir * jumpForce, ForceMode2D.Impulse);
+        }
         else
+        {
             rb.AddForce(leftJumpDir * jumpForce, ForceMode2D.Impulse);
+        }
     }
 
     private void WallJump()
     {
         rb.velocity = Vector2.zero;
         Debug.Log(isOnRightWall);
+        sprite.flipX = !isOnRightWall;
+        anim.SetTrigger("wallJumping");
+
         if (isOnRightWall)
         {
-            rb.AddForce(leftJumpDir * jumpForce * 1.5f, ForceMode2D.Impulse);
+            rb.AddForce(3f * jumpForce * leftJumpDir, ForceMode2D.Impulse);
         }
         else
         {
-            rb.AddForce(rightJumpDir * jumpForce * 1.5f, ForceMode2D.Impulse);
+            rb.AddForce(3f * jumpForce * rightJumpDir, ForceMode2D.Impulse);
         }
     }
 
@@ -104,12 +126,25 @@ public class PlayerController : MonoBehaviour
         Vector2 c = collision.GetContact(0).normal;
         if(Mathf.Abs(c.y) > Mathf.Abs(c.x))
         {
+            Debug.Log("touching floor");
             isGrounded = true;
+            if (isOnWallAir)
+            {
+                isOnWallAir = false;
+                anim.SetTrigger("wallJumping");
+            }
         }
         else
         {
-            isOnRightWall = c.x < 0;
-            isOnWallAir = true;
+            Debug.Log("touching wall");
+            if (!isGrounded)
+            {
+                Debug.Log("Clawing wall");
+                isOnRightWall = c.x < 0;
+                sprite.flipX = isOnRightWall;
+                anim.SetTrigger("wallJumping");
+                isOnWallAir = true;
+            }
         }
     }
 
@@ -117,6 +152,8 @@ public class PlayerController : MonoBehaviour
     {
         if (!isOnWallAir)
             isGrounded = false;
+        else
+            anim.SetTrigger("wallJumping");
         isOnWallAir = false;
     }
 }
