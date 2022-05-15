@@ -5,6 +5,11 @@ TagManager:
   serializedVersion: 2
   tags:
   - Interactible
+  - moving
+  - harmful
+  - Obstacle
+  - Character
+  - Frog
   layers:
   - Default
   - TransparentFX
@@ -41,4 +46,13 @@ TagManager:
   m_SortingLayers:
   - name: Default
     uniqueID: 0
+    locked: 0
+  - name: Background
+    uniqueID: 878593989
+    locked: 0
+  - name: Characters
+    uniqueID: 475309427
+    locked: 0
+  - name: Frontground
+    uniqueID: 3282601457
     locked: 0

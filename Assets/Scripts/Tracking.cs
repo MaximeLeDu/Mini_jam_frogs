@@ -6,7 +6,11 @@ public class Tracking : MonoBehaviour
 {
 
     public Transform player;
-    Vector2 offset;
+    public float camSpeed = 10f;
+
+    private Vector3 targetPosition;
+
+    Vector3 offset;
     // Start is called before the first frame update
     void Start()
     {
@@ -14,9 +18,10 @@ public class Tracking : MonoBehaviour
     }
 
     // Update is called once per frame
-    void Update()
+    void FixedUpdate()
     {
-        transform.position = (Vector3)((Vector2)player.position - offset);
+        targetPosition = player.position - offset;
+        transform.Translate(camSpeed * Time.deltaTime * (targetPosition - transform.position));
 
     }
 }
